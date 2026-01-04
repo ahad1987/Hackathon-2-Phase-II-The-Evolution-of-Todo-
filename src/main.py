@@ -258,6 +258,7 @@ def parse_command(input_line: str) -> tuple:
     """
     Parse user input into command and arguments.
 
+    Handles multi-word command names like "Add Task", "View All Tasks", etc.
     Uses shlex to handle quoted strings correctly.
 
     Args:
@@ -270,9 +271,39 @@ def parse_command(input_line: str) -> tuple:
         parts = shlex.split(input_line.strip())
         if not parts:
             return None, []
-        command = parts[0].lower()
-        args = parts[1:] if len(parts) > 1 else []
-        return command, args
+
+        # Check for multi-word commands (case-insensitive)
+        input_lower = input_line.strip().lower()
+
+        if input_lower.startswith("add task "):
+            # Skip "add" and "task" (first 2 parts), keep rest as args
+            args = parts[2:] if len(parts) > 2 else []
+            return "add", args
+        elif input_lower.startswith("view all tasks"):
+            # Skip "view", "all", "tasks" (first 3 parts), keep rest as args
+            args = parts[3:] if len(parts) > 3 else []
+            return "list", args
+        elif input_lower.startswith("update task "):
+            # Skip "update" and "task" (first 2 parts), keep rest as args
+            args = parts[2:] if len(parts) > 2 else []
+            return "update", args
+        elif input_lower.startswith("delete task "):
+            # Skip "delete" and "task" (first 2 parts), keep rest as args
+            args = parts[2:] if len(parts) > 2 else []
+            return "delete", args
+        elif input_lower.startswith("mark task completed "):
+            # Skip "mark", "task", "completed" (first 3 parts), keep rest as args
+            args = parts[3:] if len(parts) > 3 else []
+            return "complete", args
+        elif input_lower.startswith("mark task incomplete "):
+            # Skip "mark", "task", "incomplete" (first 3 parts), keep rest as args
+            args = parts[3:] if len(parts) > 3 else []
+            return "incomplete", args
+        else:
+            # Also support old-style commands for backward compatibility
+            command = parts[0].lower()
+            args = parts[1:] if len(parts) > 1 else []
+            return command, args
     except ValueError:
         # Mismatched quotes
         return None, []
@@ -306,19 +337,19 @@ def parse_task_id(value: str) -> int:
 
 def handle_add(args, store: TodoStore) -> None:
     """
-    Handle: add <title> [description]
+    Handle: Add Task <title> [description]
 
     Adds a new task with auto-incremented ID.
 
     Test Scenarios:
-    - add "Buy milk" → ID 1, status ☐, no description
-    - add "Buy eggs" "Free-range" → ID 2, status ☐, with description
-    - add (empty) → Error: "Title is required..."
-    - add "x"*101 → Error: "Title exceeds 100 characters"
+    - Add Task "Buy milk" → ID 1, status ☐, no description
+    - Add Task "Buy eggs" "Free-range" → ID 2, status ☐, with description
+    - Add Task (empty) → Error: "Title is required..."
+    - Add Task "x"*101 → Error: "Title exceeds 100 characters"
     """
     try:
         if len(args) < 1:
-            print("Title is required. Usage: add <title> [description]")
+            print("Title is required. Usage: Add Task <title> [description]")
             return
 
         title = args[0]
@@ -370,20 +401,20 @@ def handle_list(args, store: TodoStore) -> None:
 
 def handle_update(args, store: TodoStore) -> None:
     """
-    Handle: update <id> [title] [--desc description]
+    Handle: Update Task <id> [title] [--desc description]
 
     Update task title and/or description.
 
     Test Scenarios:
-    - update 1 "New title" → Updated; ID/status unchanged
-    - update 1 --desc "New desc" → Description updated
-    - update 1 "Title" --desc "Desc" → Both updated
-    - update 1 (no fields) → Error: "Provide new title or --desc..."
-    - update 999 "Title" → Error: "Task ID 999 not found"
+    - Update Task 1 "New title" → Updated; ID/status unchanged
+    - Update Task 1 --desc "New desc" → Description updated
+    - Update Task 1 "Title" --desc "Desc" → Both updated
+    - Update Task 1 (no fields) → Error: "Provide new title or --desc..."
+    - Update Task 999 "Title" → Error: "Task ID 999 not found"
     """
     try:
         if len(args) < 1:
-            print("Task ID is required. Usage: update <id> [title] [--desc description]")
+            print("Task ID is required. Usage: Update Task <id> [title] [--desc description]")
             return
 
         task_id = parse_task_id(args[0])
@@ -414,19 +445,19 @@ def handle_update(args, store: TodoStore) -> None:
 
 def handle_delete(args, store: TodoStore) -> None:
     """
-    Handle: delete <id>
+    Handle: Delete Task <id>
 
     Delete task by ID. IDs are never reused.
 
     Test Scenarios:
-    - delete 2 → "Task 2 deleted"; ID 2 removed
-    - add after delete → New task gets next sequential ID (not 2)
-    - delete 999 → Error: "Task ID 999 not found"
-    - delete (no ID) → Error: "Task ID is required..."
+    - Delete Task 2 → "Task 2 deleted"; ID 2 removed
+    - Add Task after delete → New task gets next sequential ID (not 2)
+    - Delete Task 999 → Error: "Task ID 999 not found"
+    - Delete Task (no ID) → Error: "Task ID is required..."
     """
     try:
         if len(args) < 1:
-            print("Task ID is required. Usage: delete <id>")
+            print("Task ID is required. Usage: Delete Task <id>")
             return
 
         task_id = parse_task_id(args[0])
@@ -443,19 +474,19 @@ def handle_delete(args, store: TodoStore) -> None:
 
 def handle_complete(args, store: TodoStore) -> None:
     """
-    Handle: complete <id>
+    Handle: Mark Task Completed <id>
 
     Mark task as complete with ✓ indicator.
 
     Test Scenarios:
-    - complete 1 → "Task 1 marked complete (✓)"
-    - list → Task 1 shows ✓
-    - complete (non-existent) → Error: "Task ID X not found"
-    - complete (no ID) → Error: "Task ID is required..."
+    - Mark Task Completed 1 → "Task 1 marked complete (✓)"
+    - View All Tasks → Task 1 shows ✓
+    - Mark Task Completed (non-existent) → Error: "Task ID X not found"
+    - Mark Task Completed (no ID) → Error: "Task ID is required..."
     """
     try:
         if len(args) < 1:
-            print("Task ID is required. Usage: complete <id>")
+            print("Task ID is required. Usage: Mark Task Completed <id>")
             return
 
         task_id = parse_task_id(args[0])
@@ -472,19 +503,19 @@ def handle_complete(args, store: TodoStore) -> None:
 
 def handle_incomplete(args, store: TodoStore) -> None:
     """
-    Handle: incomplete <id>
+    Handle: Mark Task Incomplete <id>
 
     Mark task as incomplete with ☐ indicator.
 
     Test Scenarios:
-    - complete 1 → "Task 1 marked complete (✓)"
-    - incomplete 1 → "Task 1 marked incomplete (☐)"
-    - list → Task 1 shows ☐ again
-    - incomplete (non-existent) → Error: "Task ID X not found"
+    - Mark Task Completed 1 → "Task 1 marked complete (✓)"
+    - Mark Task Incomplete 1 → "Task 1 marked incomplete (☐)"
+    - View All Tasks → Task 1 shows ☐ again
+    - Mark Task Incomplete (non-existent) → Error: "Task ID X not found"
     """
     try:
         if len(args) < 1:
-            print("Task ID is required. Usage: incomplete <id>")
+            print("Task ID is required. Usage: Mark Task Incomplete <id>")
             return
 
         task_id = parse_task_id(args[0])
@@ -522,13 +553,13 @@ def print_welcome_menu():
     print("""
 Welcome to Todo App
 Available commands:
-  add <title> [description]       Add a new task
-  list                            View all tasks
-  update <id> [title] [--desc]    Update a task
-  delete <id>                     Delete a task
-  complete <id>                   Mark task as complete
-  incomplete <id>                 Mark task as incomplete
-  exit                            Exit the app
+  Add Task <title> [description]        Add a new task
+  View All Tasks                        View all tasks
+  Update Task <id> [title] [--desc]     Update a task
+  Delete Task <id>                      Delete a task
+  Mark Task Completed <id>              Mark task as complete
+  Mark Task Incomplete <id>             Mark task as incomplete
+  exit                                  Exit the app
 """)
 
 
@@ -591,7 +622,7 @@ def main():
                 if not handle_exit(args, store):
                     break
             else:
-                print(f"Unknown command '{command}'. Available: add, list, update, delete, complete, incomplete, exit")
+                print(f"Unknown command '{command}'. Available: Add Task, View All Tasks, Update Task, Delete Task, Mark Task Completed, Mark Task Incomplete, exit")
 
         except KeyboardInterrupt:
             print("\nGoodbye!")
