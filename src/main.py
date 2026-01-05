@@ -2,13 +2,14 @@
 """
 Phase I - In-Memory Python Console Todo Application
 
-A simple, deterministic CLI todo app with CRUD operations:
-- Add tasks with title and optional description
-- View all tasks with status indicators
-- Update task title and/or description
-- Delete tasks (IDs never reused)
-- Mark tasks as complete/incomplete
-- Exit command to terminate
+A menu-driven CLI todo app with numeric choices (1-7):
+1. Add Task - Create new task with title and description
+2. View All Tasks - Display all tasks with status indicators
+3. Update Task - Modify task title and/or description
+4. Delete Task - Remove task by ID
+5. Mark Task Completed - Mark task as complete (✓ shown in list)
+6. Mark Task Incomplete - Mark task as incomplete (☐ shown in list)
+7. Exit - Terminate application
 
 All data is in-memory only; resets on application exit.
 
@@ -28,8 +29,6 @@ Constitution Compliance:
 
 from datetime import datetime
 from enum import Enum
-import shlex
-import sys
 
 
 # ============================================================================
@@ -79,7 +78,7 @@ class Task:
 
     def display_status(self) -> str:
         """Return visual status indicator."""
-        return "✓" if self.status == TaskStatus.COMPLETE else "☐"
+        return "[*]" if self.status == TaskStatus.COMPLETE else "[ ]"
 
 
 # ============================================================================
@@ -170,7 +169,7 @@ class TodoStore:
             ValueError: If neither title nor description provided
         """
         if title is None and description is None:
-            raise ValueError("Provide new title or --desc <description>")
+            raise ValueError("Provide new title or description")
 
         task = self.get_task(task_id)
 
@@ -254,109 +253,70 @@ class TodoStore:
 # VALIDATION LAYER
 # ============================================================================
 
-def parse_command(input_line: str) -> tuple:
+def safe_input(prompt: str) -> str:
     """
-    Parse user input into command and arguments.
-
-    Handles multi-word command names like "Add Task", "View All Tasks", etc.
-    Uses shlex to handle quoted strings correctly.
+    Safely read input from user.
 
     Args:
-        input_line (str): Raw user input
+        prompt (str): Prompt to display
 
     Returns:
-        tuple: (command, args) or (None, []) if invalid
+        str: User input (stripped)
     """
     try:
-        parts = shlex.split(input_line.strip())
-        if not parts:
-            return None, []
-
-        # Check for multi-word commands (case-insensitive)
-        input_lower = input_line.strip().lower()
-
-        if input_lower.startswith("add task "):
-            # Skip "add" and "task" (first 2 parts), keep rest as args
-            args = parts[2:] if len(parts) > 2 else []
-            return "add", args
-        elif input_lower.startswith("view all tasks"):
-            # Skip "view", "all", "tasks" (first 3 parts), keep rest as args
-            args = parts[3:] if len(parts) > 3 else []
-            return "list", args
-        elif input_lower.startswith("update task "):
-            # Skip "update" and "task" (first 2 parts), keep rest as args
-            args = parts[2:] if len(parts) > 2 else []
-            return "update", args
-        elif input_lower.startswith("delete task "):
-            # Skip "delete" and "task" (first 2 parts), keep rest as args
-            args = parts[2:] if len(parts) > 2 else []
-            return "delete", args
-        elif input_lower.startswith("mark task completed "):
-            # Skip "mark", "task", "completed" (first 3 parts), keep rest as args
-            args = parts[3:] if len(parts) > 3 else []
-            return "complete", args
-        elif input_lower.startswith("mark task incomplete "):
-            # Skip "mark", "task", "incomplete" (first 3 parts), keep rest as args
-            args = parts[3:] if len(parts) > 3 else []
-            return "incomplete", args
-        else:
-            # Also support old-style commands for backward compatibility
-            command = parts[0].lower()
-            args = parts[1:] if len(parts) > 1 else []
-            return command, args
-    except ValueError:
-        # Mismatched quotes
-        return None, []
+        return input(prompt).strip()
+    except EOFError:
+        return ""
 
 
-def parse_task_id(value: str) -> int:
+def safe_int_input(prompt: str) -> int:
     """
-    Parse and validate task ID.
+    Safely read integer input from user.
 
     Args:
-        value (str): String to parse
+        prompt (str): Prompt to display
 
     Returns:
-        int: Numeric task ID
+        int: User input as integer, or -1 if invalid
 
     Raises:
-        ValueError: If not numeric or invalid
+        ValueError: If input is not numeric
     """
     try:
-        task_id = int(value)
-        if task_id <= 0:
-            raise ValueError("Task ID must be positive")
-        return task_id
+        value = safe_input(prompt)
+        return int(value)
     except ValueError:
-        raise ValueError("Task ID must be numeric")
+        raise ValueError("Invalid input: must be a number")
 
 
 # ============================================================================
-# CLI COMMAND HANDLERS
+# MENU OPERATIONS
 # ============================================================================
 
-def handle_add(args, store: TodoStore) -> None:
+def menu_add_task(store: TodoStore) -> None:
     """
-    Handle: Add Task <title> [description]
+    Menu operation 1: Add a new task.
 
-    Adds a new task with auto-incremented ID.
-
-    Test Scenarios:
-    - Add Task "Buy milk" → ID 1, status ☐, no description
-    - Add Task "Buy eggs" "Free-range" → ID 2, status ☐, with description
-    - Add Task (empty) → Error: "Title is required..."
-    - Add Task "x"*101 → Error: "Title exceeds 100 characters"
+    Prompts user for title and optional description.
     """
+    print("\n" + "=" * 60)
+    print("OPTION 1: ADD TASK")
+    print("=" * 60)
+
     try:
-        if len(args) < 1:
-            print("Title is required. Usage: Add Task <title> [description]")
+        title = safe_input("Enter task title: ")
+        if not title:
+            print("Error: Title cannot be empty")
             return
 
-        title = args[0]
-        description = args[1] if len(args) > 1 else None
+        description = safe_input("Enter task description (optional, press Enter to skip): ")
 
         task = store.add_task(title, description)
-        print(f"Task added with ID: {task.id}")
+        print(f"\nSuccess! Task added with ID: {task.id}")
+        print(f"  Title: {task.title}")
+        if task.description:
+            print(f"  Description: {task.description}")
+        print(f"  Status: {task.display_status()} Incomplete")
 
     except ValueError as e:
         print(f"Error: {e}")
@@ -364,34 +324,32 @@ def handle_add(args, store: TodoStore) -> None:
         print(f"Unexpected error: {e}")
 
 
-def handle_list(args, store: TodoStore) -> None:
+def menu_list_tasks(store: TodoStore) -> None:
     """
-    Handle: list
+    Menu operation 2: View all tasks.
 
-    Display all tasks with ID, status, title, and description.
-
-    Test Scenarios:
-    - list (3 tasks) → Show all 3 with correct IDs, status, titles
-    - list (empty) → "No tasks yet. Add one with: add <title> [description]"
-    - list (with complete task) → Show ✓ for complete, ☐ for incomplete
+    Displays all tasks with ID, status, title, and description.
     """
+    print("\n" + "=" * 60)
+    print("OPTION 2: VIEW ALL TASKS")
+    print("=" * 60)
+
     try:
         tasks = store.list_tasks()
 
         if not tasks:
-            print("No tasks yet. Add one with: add <title> [description]")
+            print("\nNo tasks yet. Use option 1 to add your first task!")
             return
 
-        # Display header
-        print("\nID │ Status │ Title")
-        print("───┼────────┼────────────────────────────────────")
+        print(f"\nTotal tasks: {len(tasks)}\n")
+        print("ID | Status   | Title")
+        print("---+----------+------------------------------------")
 
-        # Display each task
         for task in tasks:
             status = task.display_status()
-            title = task.title[:30]  # Truncate for display
+            title = task.title[:40]  # Truncate for display
             desc_part = f" ({task.description[:30]}...)" if task.description else ""
-            print(f" {task.id} │   {status}    │ {title}{desc_part}")
+            print(f" {task.id:2d} | {status:8s} | {title}{desc_part}")
 
         print()
 
@@ -399,41 +357,41 @@ def handle_list(args, store: TodoStore) -> None:
         print(f"Error: {e}")
 
 
-def handle_update(args, store: TodoStore) -> None:
+def menu_update_task(store: TodoStore) -> None:
     """
-    Handle: Update Task <id> [title] [--desc description]
+    Menu operation 3: Update an existing task.
 
-    Update task title and/or description.
-
-    Test Scenarios:
-    - Update Task 1 "New title" → Updated; ID/status unchanged
-    - Update Task 1 --desc "New desc" → Description updated
-    - Update Task 1 "Title" --desc "Desc" → Both updated
-    - Update Task 1 (no fields) → Error: "Provide new title or --desc..."
-    - Update Task 999 "Title" → Error: "Task ID 999 not found"
+    Prompts user for task ID and new title/description.
     """
+    print("\n" + "=" * 60)
+    print("OPTION 3: UPDATE TASK")
+    print("=" * 60)
+
     try:
-        if len(args) < 1:
-            print("Task ID is required. Usage: Update Task <id> [title] [--desc description]")
+        task_id = safe_int_input("Enter task ID to update: ")
+
+        # Verify task exists
+        task = store.get_task(task_id)
+        print(f"\nCurrent task: {task.title}")
+        if task.description:
+            print(f"Description: {task.description}")
+
+        new_title = safe_input("\nEnter new title (press Enter to keep current): ")
+        new_description = safe_input("Enter new description (press Enter to keep current): ")
+
+        if not new_title and not new_description:
+            print("Error: You must provide either a new title or description")
             return
 
-        task_id = parse_task_id(args[0])
-        title = None
-        description = None
+        updated_task = store.update_task(
+            task_id,
+            title=new_title if new_title else None,
+            description=new_description if new_description else None
+        )
 
-        # Parse title and description from args
-        if len(args) > 1:
-            if args[1] == "--desc":
-                if len(args) > 2:
-                    description = args[2]
-            else:
-                title = args[1]
-                if len(args) > 2 and args[2] == "--desc":
-                    if len(args) > 3:
-                        description = args[3]
-
-        task = store.update_task(task_id, title, description)
-        print(f"Task {task.id} updated")
+        print(f"\nSuccess! Task {updated_task.id} updated")
+        print(f"  New title: {updated_task.title}")
+        print(f"  New description: {updated_task.description if updated_task.description else '(none)'}")
 
     except ValueError as e:
         print(f"Error: {e}")
@@ -443,26 +401,30 @@ def handle_update(args, store: TodoStore) -> None:
         print(f"Unexpected error: {e}")
 
 
-def handle_delete(args, store: TodoStore) -> None:
+def menu_delete_task(store: TodoStore) -> None:
     """
-    Handle: Delete Task <id>
+    Menu operation 4: Delete a task.
 
-    Delete task by ID. IDs are never reused.
-
-    Test Scenarios:
-    - Delete Task 2 → "Task 2 deleted"; ID 2 removed
-    - Add Task after delete → New task gets next sequential ID (not 2)
-    - Delete Task 999 → Error: "Task ID 999 not found"
-    - Delete Task (no ID) → Error: "Task ID is required..."
+    Prompts user for task ID to delete.
     """
+    print("\n" + "=" * 60)
+    print("OPTION 4: DELETE TASK")
+    print("=" * 60)
+
     try:
-        if len(args) < 1:
-            print("Task ID is required. Usage: Delete Task <id>")
+        task_id = safe_int_input("Enter task ID to delete: ")
+
+        # Verify task exists first
+        task = store.get_task(task_id)
+        print(f"\nTask to delete: {task.title}")
+
+        confirm = safe_input("Are you sure? (yes/no): ").lower()
+        if confirm not in ['yes', 'y']:
+            print("Deletion cancelled")
             return
 
-        task_id = parse_task_id(args[0])
         store.delete_task(task_id)
-        print(f"Task {task_id} deleted")
+        print(f"\nSuccess! Task {task_id} deleted")
 
     except ValueError as e:
         print(f"Error: {e}")
@@ -472,26 +434,22 @@ def handle_delete(args, store: TodoStore) -> None:
         print(f"Unexpected error: {e}")
 
 
-def handle_complete(args, store: TodoStore) -> None:
+def menu_complete_task(store: TodoStore) -> None:
     """
-    Handle: Mark Task Completed <id>
+    Menu operation 5: Mark a task as completed.
 
-    Mark task as complete with ✓ indicator.
-
-    Test Scenarios:
-    - Mark Task Completed 1 → "Task 1 marked complete (✓)"
-    - View All Tasks → Task 1 shows ✓
-    - Mark Task Completed (non-existent) → Error: "Task ID X not found"
-    - Mark Task Completed (no ID) → Error: "Task ID is required..."
+    Prompts user for task ID to mark complete.
     """
+    print("\n" + "=" * 60)
+    print("OPTION 5: MARK TASK COMPLETED")
+    print("=" * 60)
+
     try:
-        if len(args) < 1:
-            print("Task ID is required. Usage: Mark Task Completed <id>")
-            return
+        task_id = safe_int_input("Enter task ID to mark as completed: ")
 
-        task_id = parse_task_id(args[0])
         task = store.complete_task(task_id)
-        print(f"Task {task.id} marked complete (✓)")
+        print(f"\nSuccess! Task {task.id} marked complete {task.display_status()}")
+        print(f"  Title: {task.title}")
 
     except ValueError as e:
         print(f"Error: {e}")
@@ -501,26 +459,22 @@ def handle_complete(args, store: TodoStore) -> None:
         print(f"Unexpected error: {e}")
 
 
-def handle_incomplete(args, store: TodoStore) -> None:
+def menu_incomplete_task(store: TodoStore) -> None:
     """
-    Handle: Mark Task Incomplete <id>
+    Menu operation 6: Mark a task as incomplete.
 
-    Mark task as incomplete with ☐ indicator.
-
-    Test Scenarios:
-    - Mark Task Completed 1 → "Task 1 marked complete (✓)"
-    - Mark Task Incomplete 1 → "Task 1 marked incomplete (☐)"
-    - View All Tasks → Task 1 shows ☐ again
-    - Mark Task Incomplete (non-existent) → Error: "Task ID X not found"
+    Prompts user for task ID to mark incomplete.
     """
+    print("\n" + "=" * 60)
+    print("OPTION 6: MARK TASK INCOMPLETE")
+    print("=" * 60)
+
     try:
-        if len(args) < 1:
-            print("Task ID is required. Usage: Mark Task Incomplete <id>")
-            return
+        task_id = safe_int_input("Enter task ID to mark as incomplete: ")
 
-        task_id = parse_task_id(args[0])
         task = store.incomplete_task(task_id)
-        print(f"Task {task.id} marked incomplete (☐)")
+        print(f"\nSuccess! Task {task.id} marked incomplete {task.display_status()}")
+        print(f"  Title: {task.title}")
 
     except ValueError as e:
         print(f"Error: {e}")
@@ -530,105 +484,75 @@ def handle_incomplete(args, store: TodoStore) -> None:
         print(f"Unexpected error: {e}")
 
 
-def handle_exit(args, store: TodoStore) -> bool:
-    """
-    Handle: exit
-
-    Terminate application. Data is lost (in-memory only).
-
-    Test Scenarios:
-    - exit → "Goodbye!" message; app terminates
-    - Restart app → No tasks present (confirming in-memory only)
-    """
-    print("Goodbye!")
-    return False  # Signal to break main loop
+def print_menu():
+    """Display the main menu."""
+    print("\n" + "=" * 60)
+    print("TODO APPLICATION - MAIN MENU")
+    print("=" * 60)
+    print("\nPlease select an option (1-7):\n")
+    print("  1. Add Task")
+    print("  2. View All Tasks")
+    print("  3. Update Task")
+    print("  4. Delete Task")
+    print("  5. Mark Task Completed")
+    print("  6. Mark Task Incomplete")
+    print("  7. Exit")
+    print()
 
 
 # ============================================================================
 # MAIN APPLICATION LOOP
 # ============================================================================
 
-def print_welcome_menu():
-    """Display welcome menu with available commands."""
-    print("""
-Welcome to Todo App
-Available commands:
-  Add Task <title> [description]        Add a new task
-  View All Tasks                        View all tasks
-  Update Task <id> [title] [--desc]     Update a task
-  Delete Task <id>                      Delete a task
-  Mark Task Completed <id>              Mark task as complete
-  Mark Task Incomplete <id>             Mark task as incomplete
-  exit                                  Exit the app
-""")
-
-
 def main():
     """
-    Main application loop.
+    Main application loop with numeric menu selection.
 
-    Initialization:
-    1. Create TodoStore (in-memory)
-    2. Print welcome menu
-    3. Loop: read input → parse → route → execute → error handling
-    4. Exit on 'exit' command or Ctrl+C
-
-    Test Workflow:
-    - Start app → See welcome menu
-    - add "Task 1" → Confirm "Task added with ID: 1"
-    - add "Task 2" "with desc" → Confirm ID 2
-    - list → See 2 tasks with ☐ status
-    - update 1 "Updated Task 1" → Confirm updated
-    - list → See updated task 1
-    - complete 1 → Confirm "Task 1 marked complete (✓)"
-    - list → See ✓ for task 1
-    - delete 2 → Confirm "Task 2 deleted"
-    - list → See only task 1
-    - exit → "Goodbye!" and terminate
-    - Restart app → No tasks (confirming in-memory reset)
+    Displays menu (1-7) and executes selected operation.
+    Continues until user selects option 7 (Exit).
     """
     store = TodoStore()
-    print_welcome_menu()
+
+    print("\n" + "=" * 60)
+    print("WELCOME TO TODO APPLICATION")
+    print("=" * 60)
+    print("\nThis is an in-memory task management system.")
+    print("Data will be lost when you exit the application.")
 
     while True:
         try:
-            # Read user input
-            user_input = input("todo> ").strip()
+            print_menu()
 
-            if not user_input:
-                continue
+            choice = safe_input("Choice selection 1-7: ").strip()
 
-            # Parse command and arguments
-            command, args = parse_command(user_input)
-
-            if command is None:
-                print("Invalid input. Please try again.")
-                continue
-
-            # Route to appropriate handler
-            if command == "add":
-                handle_add(args, store)
-            elif command == "list":
-                handle_list(args, store)
-            elif command == "update":
-                handle_update(args, store)
-            elif command == "delete":
-                handle_delete(args, store)
-            elif command == "complete":
-                handle_complete(args, store)
-            elif command == "incomplete":
-                handle_incomplete(args, store)
-            elif command == "exit":
-                if not handle_exit(args, store):
-                    break
+            if choice == "1":
+                menu_add_task(store)
+            elif choice == "2":
+                menu_list_tasks(store)
+            elif choice == "3":
+                menu_update_task(store)
+            elif choice == "4":
+                menu_delete_task(store)
+            elif choice == "5":
+                menu_complete_task(store)
+            elif choice == "6":
+                menu_incomplete_task(store)
+            elif choice == "7":
+                print("\n" + "=" * 60)
+                print("Thank you for using Todo Application!")
+                print("=" * 60)
+                print("\nGoodbye!\n")
+                break
             else:
-                print(f"Unknown command '{command}'. Available: Add Task, View All Tasks, Update Task, Delete Task, Mark Task Completed, Mark Task Incomplete, exit")
+                print(f"\nError: Invalid choice '{choice}'. Please enter 1-7.")
 
         except KeyboardInterrupt:
-            print("\nGoodbye!")
+            print("\n\nApplication terminated by user.")
+            print("Goodbye!\n")
             break
         except Exception as e:
-            print(f"Unexpected error: {e}")
+            print(f"\nUnexpected error: {e}")
+            print("Please try again.\n")
 
 
 if __name__ == "__main__":

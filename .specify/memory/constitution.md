@@ -1,55 +1,82 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# Command-Line Todo Application Constitution
+<!-- Phase I Focus: In-Memory Python Console Todo App -->
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Correctness
+All logic MUST work exactly as specified. No deviations, no undocumented behaviors. Every function must produce deterministic output given the same input.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Simplicity
+Code must be clean, minimal, and readable. Prefer straightforward implementations over clever patterns. Comments are only necessary where intent is non-obvious. No premature optimization or over-engineering.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Determinism
+Behavior MUST be predictable with no hidden side effects. State changes must be explicit and traceable. In-memory storage only—no file I/O or external state in Phase I.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. Spec-Driven Development
+Implementation MUST strictly follow the feature specification. No feature scope creep. Requirements are the source of truth. Code reviews verify compliance with spec.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. Incremental Design
+Phase I code MUST be extensible for Phase II (full-stack web app) and beyond. Modular structure, clear separation of concerns, minimal coupling. Design decisions informed by future phases but not constrained by them.
 
-### [PRINCIPLE_6_NAME]
+## Technology Stack & Constraints
 
+### Language & Runtime
+- Python 3.x exclusively
+- Standard library only (no third-party dependencies in Phase I)
+- No async/await, no web frameworks, no AI calls
 
-[PRINCIPLE__DESCRIPTION]
+### Storage & Persistence
+- In-memory only: lists and dictionaries
+- NO file I/O, NO databases, NO caching to disk
+- Data resets completely on application exit
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+### User Interface & Interaction
+- CLI-based only
+- Standard input/output protocol
+- Command structure: `add`, `list`, `update`, `delete`, `complete`, `exit`
+- Human-readable output with intuitive prompts
+- Clear error messages for invalid commands
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+## Development Standards
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+### Code Organization
+- Modular, well-named functions with single responsibility
+- Logical grouping (e.g., todo operations, CLI interface, state management)
+- No circular dependencies
+- Functions under 30 lines where practical
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### Error Handling
+- All invalid commands produce helpful error messages
+- Type validation for input (id, description, status)
+- Graceful degradation—no unhandled exceptions to user
+- Exit cleanly on `exit` command
+
+### Documentation
+- Inline comments only where necessary (no verbosity)
+- Function docstrings for all public functions
+- Clear usage output on app startup
+- Command examples in output
+
+## Quality Acceptance Criteria
+
+- ✅ App runs without errors
+- ✅ All todo operations (add, list, update, delete, complete) work correctly
+- ✅ Commands are intuitive and documented in usage output
+- ✅ Code is clean, maintainable, Phase-II ready
+- ✅ Fully complies with this constitution
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution is the source of truth for all Phase I development decisions. All code, tests, and documentation must align with these principles and standards.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Amendment Procedure:**
+- Amendments require explicit user intent and documented rationale
+- Changes must be reflected in spec, plan, and tasks
+- Version updates follow semantic versioning (MAJOR.MINOR.PATCH)
+
+**Compliance Verification:**
+- Code reviews confirm adherence to all principles
+- Tests validate deterministic behavior
+- Architecture reflects incremental design goals
+
+**Version**: 1.0.0 | **Ratified**: 2026-01-05 | **Last Amended**: 2026-01-05
