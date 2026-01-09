@@ -10,25 +10,22 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements files (supports both poetry and pip)
-COPY backend/requirements.txt ./requirements.txt
-COPY backend/pyproject.toml ./pyproject.toml
+# Copy requirements file
+COPY requirements.txt ./requirements.txt
 
-# Install Python dependencies using pip (more reliable on Railway)
+# Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY backend/src ./src
-COPY backend/tests ./tests
+COPY src ./src
 
 # Create non-root user
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
+# Expose port
+EXPOSE 8000
 
 # Run the application
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "${PORT:-8000}"]
+CMD uvicorn src.main:app --host 0.0.0.0 --port ${PORT:-8000}
