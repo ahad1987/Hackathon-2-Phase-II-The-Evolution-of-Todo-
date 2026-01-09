@@ -12,17 +12,17 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements files from Phase-II/backend
-COPY Phase-II/backend/requirements.txt ./requirements.txt
-COPY Phase-II/backend/pyproject.toml ./pyproject.toml
+# Copy requirements files from backend directory
+COPY backend/requirements.txt ./requirements.txt
+COPY backend/pyproject.toml ./pyproject.toml
 
 # Install Python dependencies using pip
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Copy application code from Phase-II/backend
-COPY Phase-II/backend/src ./src
-COPY Phase-II/backend/tests ./tests
+# Copy application code from backend directory
+COPY backend/src ./src
+COPY backend/tests ./tests
 
 # Create non-root user
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
