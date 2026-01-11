@@ -59,12 +59,19 @@ const createApiClient = (): AxiosInstance => {
     (error: AxiosError<ApiErrorResponse>) => {
       const status = error.response?.status || 500;
       const data = error.response?.data || {};
-      const message =
+      let message =
         data.message ||
         data.error ||
         error.message ||
         'An unexpected error occurred';
       const code = data.code || 'UNKNOWN_ERROR';
+
+      // Handle 400 errors - provide user-friendly messages
+      if (status === 400) {
+        if (message.includes('already') || message.includes('exists') || message.includes('registered')) {
+          message = 'The username has already taken, please choose another';
+        }
+      }
 
       // Handle 401 errors (token expired/invalid)
       if (status === 401) {
